@@ -7,13 +7,14 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 
 	"github.com/andlabs/ui"
 )
 
 var FileToHash string
+var contents []byte
+var err error
 
 func main() {
 
@@ -21,11 +22,9 @@ func main() {
 		FileToHash = os.Args[1]
 	}
 
-	// Handling command line input
-
 	err := ui.Main(func() {
 
-		file := ui.NewButton("Open File")
+		OpenFileButton := ui.NewButton("Open File")
 		filepath := ui.NewLabel("")
 		md5Button := ui.NewButton("MD5")
 		sha1Button := ui.NewButton("SHA1")
@@ -36,7 +35,7 @@ func main() {
 		compare := ui.NewEntry()
 
 		box := ui.NewVerticalBox()
-		box.Append(file, false)
+		box.Append(OpenFileButton, false)
 		box.Append(filepath, false)
 		box.Append(md5Button, false)
 		box.Append(sha1Button, false)
@@ -51,29 +50,32 @@ func main() {
 
 		if FileToHash != "" {
 			filepath.SetText(FileToHash)
+			contents, err = ioutil.ReadFile(FileToHash)
+			if err != nil {
+				hashsum.SetText(fmt.Sprintf("Could not read out file: %s", FileToHash))
+			}
 		}
-		// Choosing the file to hash
-		file.OnClicked(func(*ui.Button) {
+		OpenFileButton.OnClicked(func(*ui.Button) {
 			FileToHash = ui.OpenFile(window)
 			filepath.SetText(FileToHash)
+			contents, err = ioutil.ReadFile(FileToHash)
+			if err != nil {
+				hashsum.SetText(fmt.Sprintf("Could not read out file: %s", FileToHash))
+			}
 		})
 
 		// Going through the options
 		md5Button.OnClicked(func(*ui.Button) {
-			md5sum := md5.Sum(OpenFile(FileToHash))
-			hashsum.SetText(fmt.Sprintf("%x", md5sum))
+			hashsum.SetText(fmt.Sprintf("%x", md5.Sum(contents)))
 		})
 		sha1Button.OnClicked(func(*ui.Button) {
-			sha1sum := sha1.Sum(OpenFile(FileToHash))
-			hashsum.SetText(fmt.Sprintf("%x", sha1sum))
+			hashsum.SetText(fmt.Sprintf("%x", sha1.Sum(contents)))
 		})
 		sha256Button.OnClicked(func(*ui.Button) {
-			sha256sum := sha256.Sum256(OpenFile(FileToHash))
-			hashsum.SetText(fmt.Sprintf("%x", sha256sum))
+			hashsum.SetText(fmt.Sprintf("%x", sha256.Sum256(contents)))
 		})
 		sha512Button.OnClicked(func(*ui.Button) {
-			sha512sum := sha512.Sum512(OpenFile(FileToHash))
-			hashsum.SetText(fmt.Sprintf("%x", sha512sum))
+			hashsum.SetText(fmt.Sprintf("%x", sha512.Sum512(contents)))
 		})
 
 		// Optionally you can compare two hashsums
@@ -91,18 +93,7 @@ func main() {
 		})
 		window.Show()
 	})
-	check(err, "Something failed")
-}
-
-func OpenFile(filepath string) []byte {
-	// Currently im loading the whole file to memory
-	file, err := ioutil.ReadFile(filepath)
-	check(err, fmt.Sprintf("Could not read out file: %s", filepath))
-	return file
-}
-
-func check(e error, s string) {
-	if e != nil {
-		log.Fatalln(s, e)
+	if err != nil {
+		panic(err)
 	}
 }
